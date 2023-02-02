@@ -11,6 +11,7 @@ class Building():
         * maximum_heating_power:        [W] (>= 0)
         * initial_building_temperature: building temperature at start time [℃]
         * time_step_size:               [s]
+        * test
         * conditioned_floor_area:       [m**2]
     """
 
@@ -31,6 +32,16 @@ class Building():
         self.__time_step_size = time_step_size
         self.__conditioned_floor_area = conditioned_floor_area
 
+    def step(self, outside_temperature, power):
+        """Performs building simulation for the next time step.
+
+        Parameters:
+            * power: heating or cooling power of the HVAC system [W]
+        """
+        self.current_temperature = self._next_temperature(outside_temperature=outside_temperature,
+                                                          heating_cooling_power=power)
+        self.thermal_power = power
+
     def step(self, outside_temperature, heating_setpoint, cooling_setpoint):
         """Performs building simulation for the next time step.
 
@@ -39,6 +50,7 @@ class Building():
             * heating_setpoint: heating setpoint of the HVAC system [℃]
             * cooling_setpoint: cooling setpoint of the HVAC system [℃]
         """
+
         def next_temperature(heating_cooling_power):
             return self._next_temperature(
                 outside_temperature=outside_temperature,
@@ -46,9 +58,9 @@ class Building():
                 cooling_setpoint=cooling_setpoint,
                 heating_cooling_power=heating_cooling_power
             )
+
         next_temperature_no_power = next_temperature(0)
-        if (next_temperature_no_power >= heating_setpoint and
-                next_temperature_no_power <= cooling_setpoint):
+        if heating_setpoint <= next_temperature_no_power <= cooling_setpoint:
             self.current_temperature = next_temperature_no_power
         else:
             if next_temperature_no_power < heating_setpoint:
@@ -69,8 +81,7 @@ class Building():
             next_temperature_heating_cooling = next_temperature(self.thermal_power)
             self.current_temperature = next_temperature_heating_cooling
 
-    def _next_temperature(self, outside_temperature, heating_setpoint, cooling_setpoint,
-                          heating_cooling_power):
+    def _next_temperature(self, outside_temperature, heating_cooling_power):
         dt_by_cm = self.__time_step_size.total_seconds() / self.__heat_mass_capacity
         return (self.current_temperature * (1 - dt_by_cm * self.__heat_transmission) +
                 dt_by_cm * (heating_cooling_power + self.__heat_transmission * outside_temperature))
